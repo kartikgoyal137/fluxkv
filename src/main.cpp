@@ -9,12 +9,12 @@
 #include <netdb.h>
 #include <thread>
 #include <vector>
-#include <transform>
+#include <algorithm>
 
 void handle_command(int client_fd, std::vector<std::string>& command) {
   if(command.size()>0) {
     std::string cmd = command[0];
-    transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
+    std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
 
     if(cmd=="PING") {
       send(client_fd, "+PONG\r\n", 7, 0)
