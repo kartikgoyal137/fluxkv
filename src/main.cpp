@@ -127,9 +127,18 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
       }
     }
     else if(cmd=="LRANGE") { 
-      if(command.size()>2) {
-        int64_t start = std::stoll(command[1]);
-        int64_t stop = std::stoll(command[2]);
+      if(command.size()>3) {
+        int64_t start = std::stoll(command[2]);
+        int64_t stop = std::stoll(command[3]);
+        int64_t size = lists[command[1]].size();
+        if(start<0) {
+          if(-start>size) start = 0;
+          start += size;
+        }
+        if(stop<0) {
+          if(-stop>size) stop = 0;
+          stop += size;
+        }
         response = LRANGE(command[1], start, stop);
       }
     }
