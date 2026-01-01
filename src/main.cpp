@@ -18,9 +18,82 @@
 std::map <std::string, std::string> store;
 std::unordered_map<std::string, std::deque<std::string>> lists;
 
+std::string arr_to_resp(std::vector<std::string> array) {
+  std::string response;
+  int64_t size = array.size();  
+  response = "*"+std::to_string(size)+"\r\n";
+  for(auto& ele : array) {
+    response += "$"+std::to_string(ele.size())+"\r\n"+ele+"\r\n";
+  }
+
+  return response;
+}
+
 void handle_key_expiry(std::string key, int64_t millisec) {
   std::this_thread::sleep_for(std::chrono::milliseconds(millisec));
   if(store.find(key)!=store.end()) store.erase(key);
+}
+
+std::string PING() {
+  return "+PONG\r\n";
+}
+
+std::string ECHO(std::string text) {
+  return "$"+std::to_string(text.length())+"\r\n"+text+"\r\n";
+}
+
+std::string SET(std::vector<std::string>& command) {
+  std::string key = command[1]; std::string val = command[2];
+  store[key]=val;
+  if(command.size()>4) {
+  int64_t expire_time = std::stoi(command[4]);
+  if(command[3]=="EX") {
+  std::thread t(handle_key_expiry, key, expire_time*1000);
+  t.detach();
+  }
+  else if (command[3]=="PX") {
+  std::thread t(handle_key_expiry, key, expire_time);
+  t.detach();
+  }
+  }
+
+  return "+OK\r\n";
+
+}
+
+std::string GET(std::string key) {
+   if(store.find(key)!=store.end()) {
+      std::string val = store[key];
+      return "$"+std::to_string(val.length())+"\r\n"+val+"\r\n";
+   }
+
+   return "$-1\r\n";
+}
+
+std::string RPUSH(std::vector<std::string>& command) {
+   std::string list_name = command[1];
+        auto& dq = lists[list_name];
+
+   for(int i=2; i<command.size(); i++) {
+      std::string element = command[i];
+      dq.push_back(element);
+   }
+        
+    return ":"+std::to_string(dq.size())+"\r\n";
+}
+
+std::string LRANGE(std::string list_name, int64_t start, int64_t stop) {
+  std::vector<std::string> array;
+  int64_t size = lists[list_name].size();
+  if(lists.find(list_name)==lists.end() || start >= size || start > stop) return arr_to_resp(array);
+
+  if(stop >= size) stop = size-1;
+
+  for(int i=start; i<=stop; i++) {
+    array.push_back(lists[list_name][i]);
+  }
+
+  return arr_to_resp(array);
 }
 
 void handle_command(int client_fd, std::vector<std::string>& command) {
@@ -30,54 +103,34 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
     std::string response = "$-1\r\n";
 
     if(cmd=="PING") {
-      response = "+PONG\r\n";
+      response = PING();
     }
     else if (cmd=="ECHO") {
       if(command.size()>1) {
-        std::string text = command[1];
-        response = "$"+std::to_string(text.length())+"\r\n"+text+"\r\n";
+         response = ECHO(command[1]);
       }
     }
     else if(cmd=="SET") {
       if(command.size()>2) {
-        std::string key = command[1]; std::string val = command[2];
-
-          store[key]=val;
-          response = "+OK\r\n";
-        if(command.size()>4) {
-          int64_t expire_time = std::stoi(command[4]);
-          if(command[3]=="EX") {
-            std::thread t(handle_key_expiry, key, expire_time*1000);
-            t.detach();
-          }
-          else if (command[3]=="PX") {
-            std::thread t(handle_key_expiry, key, expire_time);
-            t.detach();
-          }
-        }
+        response = SET(command);
       }
     }
     else if(cmd=="GET") {
-        if(command.size()>1) {
-        std::string key = command[1];
-        if(store.find(key)!=store.end()) {
-          std::string val = store[key];
-          response = "$"+std::to_string(val.length())+"\r\n"+val+"\r\n";
-        }
+      if(command.size()>1) {
+        response = GET(command[1]);       
       }
 
     }
     else if(cmd=="RPUSH") {
       if(command.size()>2) {
-        std::string list_name = command[1];
-        auto& dq = lists[list_name];
-
-        for(int i=2; i<command.size(); i++) {
-          std::string element = command[i];
-          dq.push_back(element);
-        }
-        
-        response = ":"+std::to_string(dq.size())+"\r\n";
+        response = RPUSH(command); 
+      }
+    }
+    else if(cmd=="LRANGE") { 
+      if(command.size()>2) {
+        int64_t start = std::stoll(command[1]);
+        int64_t stop = std::stoll(command[2]);
+        response = LRANGE(command[1], start, stop);
       }
     }
 
