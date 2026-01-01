@@ -82,6 +82,19 @@ std::string RPUSH(std::vector<std::string>& command) {
     return ":"+std::to_string(dq.size())+"\r\n";
 }
 
+std::string LPUSH(std::vector<std::string>& command) {
+   std::string list_name = command[1];
+        auto& dq = lists[list_name];
+
+   for(int i=2; i<command.size(); i++) {
+      std::string element = command[i];
+      dq.push_front(element);
+   }
+        
+    return ":"+std::to_string(dq.size())+"\r\n";
+}
+
+
 std::string LRANGE(std::string list_name, int64_t start, int64_t stop) {
   std::vector<std::string> array;
   int64_t size = lists[list_name].size();
@@ -124,6 +137,11 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
     else if(cmd=="RPUSH") {
       if(command.size()>2) {
         response = RPUSH(command); 
+      }
+    }
+    else if(cmd=="LPUSH") {
+      if(command.size()>2) {
+        response = LPUSH(command); 
       }
     }
     else if(cmd=="LRANGE") { 
