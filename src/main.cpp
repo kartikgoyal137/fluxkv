@@ -12,14 +12,15 @@
 #include <map>
 #include <algorithm>
 #include <chrono>
+#include <deque>
+#include <unordered_map>
 
-using Clock = std::chrono::steady_clock;
+std::map <std::string, std::string> store;
+std::unordered_map<std::string, std::deque<std::string>> lists;
 
-std::map <std::string, std::string> mp;
-
-void handle_key_expiry(string key, int millisec) {
+void handle_key_expiry(std::string key, int64_t millisec) {
   std::this_thread::sleep_for(std::chrono::milliseconds(millisec));
-  if(mp.find(key)!=mp.end()) mp.erase(key);
+  if(store.find(key)!=store.end()) store.erase(key);
 }
 
 void handle_command(int client_fd, std::vector<std::string>& command) {
@@ -40,16 +41,17 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
     else if(cmd=="SET") {
       if(command.size()>2) {
         std::string key = command[1]; std::string val = command[2];
-          mp[key]=val;
+
+          store[key]=val;
           response = "+OK\r\n";
         if(command.size()>4) {
-          int expire_time = std::stoi(command[4]);
+          int64_t expire_time = std::stoi(command[4]);
           if(command[3]=="EX") {
-            std::thread t(handle_key_expiry, key, command[4]*1000);
+            std::thread t(handle_key_expiry, key, expire_time*1000);
             t.detach();
           }
           else if (command[3]=="PX") {
-            std::thread t(handle_key_expiry, key, command[4]);
+            std::thread t(handle_key_expiry, key, expire_time);
             t.detach();
           }
         }
@@ -58,12 +60,21 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
     else if(cmd=="GET") {
         if(command.size()>1) {
         std::string key = command[1];
-        if(mp.find(key)!=mp.end()) {
-          std::string val = mp[key];
+        if(store.find(key)!=store.end()) {
+          std::string val = store[key];
           response = "$"+std::to_string(val.length())+"\r\n"+val+"\r\n";
         }
       }
 
+    }
+    else if(cmd=="RPUSH") {
+      if(command.size()>2) {
+        std::string list_name = command[1];
+        std::string element = command[2];
+        auto& dq = lists[list_name];
+        dq.push_back(element);
+        response = ":"+std::to_string(dq.size())+"\r\n";
+      }
     }
 
     send(client_fd, response.c_str(), response.length(), 0);
