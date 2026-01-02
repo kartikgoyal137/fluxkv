@@ -205,11 +205,11 @@ std::string BLPOP(std::string list_key, int64_t timeout) {
   return arr_to_resp(array);
 }
 
-std::string TYPE(std::string list_key) {
+std::string TYPE(std::string key) {
   std::string response = "+none\r\n";
   {
     std::shared_lock<std::shared_mutex> lock(sm);
-    if(lists.find(list_key)!=lists.end()) {
+    if(store.find(key)!=store.end()) {
       response = "+string\r\n";
     }
   }
