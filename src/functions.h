@@ -307,14 +307,21 @@ std::string XADD(std::vector<std::string> command) {
     stream_id_prev = last->first;
   }
 
+  std::string new_id = generate_stream_id(
+    stream_id_prev,
+    stream_id,
+    current_time_ms()
+);
+  
+  stream_id = new_id;
   
   bool compare = stream_id_compare(stream_id_prev, stream_id);
 
-  if(!compare) {
-    if(stream_id_prev=="0-0") response = "-ERR The ID specified in XADD must be greater than 0-0\r\n";
-    else response = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
+  if(stream_id=="0-0") return "-ERR The ID specified in XADD must be greater than 0-0\r\n";
 
-    return response;
+  if(!compare) {
+        response = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
+        return response;
   }
   
   StreamEntry stream_map;

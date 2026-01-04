@@ -1,5 +1,14 @@
 #include <string>
 #include <vector>
+#include <chrono>
+
+long long current_time_ms() {
+    using namespace std::chrono;
+    return duration_cast<milliseconds>(
+        system_clock::now().time_since_epoch()
+    ).count();
+}
+
 
 std::vector<std::string> resp_parser(int client_fd, const char* buffer) {
   std::vector<std::string> args; int pos = 0;
@@ -60,8 +69,44 @@ bool stream_id_compare(const std::string& id1, const std::string& id2) {
   std::string t2 = id2.substr(0, p2);
   std::string s2 = id2.substr(p2 + 1);
 
-    if (t1 != t2)
+  if (t1 != t2)
         return numStrLess(t1, t2);
 
     return numStrLess(s1, s2);
 }
+
+std::string generate_stream_id(
+    const std::string& last_id,
+    const std::string& user_id,
+    long long now_ms
+) {
+    long long last_t = 0, last_s = 0;
+
+    if (last_id != "0-0") {
+        auto p = last_id.find('-');
+        last_t = std::stoll(last_id.substr(0, p));
+        last_s = std::stoll(last_id.substr(p + 1));
+    }
+
+    if (user_id == "*") {
+        if (now_ms > last_t)
+            return std::to_string(now_ms) + "-0";
+        else
+            return std::to_string(last_t) + "-" + std::to_string(last_s + 1);
+    }
+
+    auto p = user_id.find('-');
+    std::string t = user_id.substr(0, p);
+    std::string s = user_id.substr(p + 1);
+
+    if (s == "*") {
+        long long T = std::stoll(t);
+        if (T > last_t)
+            return t + "-0";
+        if (T == last_t)
+            return t + "-" + std::to_string(last_s + 1);
+    }
+
+    return user_id;
+}
+
