@@ -75,6 +75,13 @@ bool stream_id_compare(const std::string& id1, const std::string& id2) {
     return numStrLess(s1, s2);
 }
 
+bool stream_id_compare_equal(const std::string& a,
+                             const std::string& b) {
+    return stream_id_compare(a, b) || a == b;
+}
+
+
+
 std::string generate_stream_id(
     const std::string& last_id,
     const std::string& user_id,

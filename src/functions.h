@@ -345,3 +345,40 @@ std::string XADD(std::vector<std::string> command) {
   return bulk_string(stream_id);
 }
 
+
+std::string XRANGE(std::string stream_key, std::string start, std::string end) {
+  auto sit = streams.find(stream_key);
+  if(sit==streams.end()) return "*0\r\n";
+
+  Stream& stream = sit->second;
+
+  if (start == "-") start = "0-0";
+  else if(start.find('-')==std::string::npos) start  += "-0";
+
+  if (end == "+")
+    end = "18446744073709551615-18446744073709551615";
+  else if (end.find('-') == std::string::npos)
+    end += "--18446744073709551615";
+
+  auto it = stream.entries.lower_bound(start);
+  std::string response;
+  int count = 0;
+
+  while(it!=stream.entries.end() && stream_id_compare_equal(it->first, end) ) {
+    count++;
+    response += "*2\r\n";
+    response += bulk_string(it->first);
+    std::vector<std::string> array;
+    for(auto& k : it->second) {
+      array.push_back(k->first);
+      array.push_back(k->second);
+    }
+    
+    response += arr_to_resp(obj.array);
+    ++it;
+  }
+
+  response = "*"+std::to_string(count)+""\r\n" + response;
+
+  return response;
+}
