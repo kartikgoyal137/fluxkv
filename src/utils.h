@@ -1,16 +1,19 @@
+#ifndef UTILS_H
+#define UTILS_H
+
 #include <string>
 #include <vector>
 #include <chrono>
 #include <charconv>
 
-long long current_time_ms() {
+inline long long current_time_ms() {
     using namespace std::chrono;
     return duration_cast<milliseconds>(
         system_clock::now().time_since_epoch()
     ).count();
 }
 
-int to_int(const std::string& s) {
+inline int to_int(const std::string& s) {
     int value;
     auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), value);
 
@@ -20,7 +23,7 @@ int to_int(const std::string& s) {
     return value;
 }
 
-bool arg_check(const std::string& a, const std::string& b) {
+inline bool arg_check(const std::string& a, const std::string& b) {
     if (a.size() != b.size()) return false;
     for (size_t i = 0; i < a.size(); ++i) {
         if (tolower(a[i]) != tolower(b[i])) return false;
@@ -28,35 +31,9 @@ bool arg_check(const std::string& a, const std::string& b) {
     return true;
 }
 
-std::vector<std::string> resp_parser(int client_fd, const char* buffer) {
-  std::vector<std::string> args; int pos = 0;
-  if(buffer[pos]!='*') return args;
-  pos++; int tokens = 0;
-  while(buffer[pos]!='\r') {
-    tokens = tokens*10 + (buffer[pos]-'0');
-    pos++;
-  }
 
-  pos+=2;
 
-  for(int i=0; i<tokens; i++) {
-    if(buffer[pos]!='$') break;
-    pos++; int str_len = 0;
-    while(buffer[pos]!='\r') {
-      str_len = str_len*10 + (buffer[pos]-'0'); 
-      pos++;
-    }
-    pos+=2;
-
-    std::string arg(buffer+pos, str_len);
-    args.push_back(arg);
-    pos+= str_len+2;
-  }
-
-  return args;
-}
-
-std::string arr_to_resp(std::vector<std::string> array) {
+inline std::string arr_to_resp(std::vector<std::string> array) {
   std::string response;
   int64_t size = array.size();  
   response = "*"+std::to_string(size)+"\r\n";
@@ -67,17 +44,17 @@ std::string arr_to_resp(std::vector<std::string> array) {
   return response;
 }
 
-std::string bulk_string(std::string text) {
+inline std::string bulk_string(std::string text) {
   return "$"+std::to_string(text.length())+"\r\n"+text+"\r\n";
 }
 
-bool numStrLess(const std::string& a, const std::string& b) {
+inline bool numStrLess(const std::string& a, const std::string& b) {
     if (a.size() != b.size())
         return a.size() < b.size();
     return a < b;
 }
 
-bool stream_id_compare(const std::string& id1, const std::string& id2) {
+inline bool stream_id_compare(const std::string& id1, const std::string& id2) {
     auto p1 = id1.find('-');
     auto p2 = id2.find('-');
 
@@ -93,14 +70,14 @@ bool stream_id_compare(const std::string& id1, const std::string& id2) {
     return numStrLess(s1, s2);
 }
 
-bool stream_id_compare_equal(const std::string& a,
+inline bool stream_id_compare_equal(const std::string& a,
                              const std::string& b) {
     return stream_id_compare(a, b) || a == b;
 }
 
 
 
-std::string generate_stream_id(
+inline std::string generate_stream_id(
     const std::string& last_id,
     const std::string& user_id,
     long long now_ms
@@ -135,3 +112,4 @@ std::string generate_stream_id(
     return user_id;
 }
 
+#endif

@@ -10,19 +10,54 @@
 #include <thread>
 #include <vector>
 #include "functions.h"
-#include <set>
 
-std::set<int> multi;
+std::vector<std::string> resp_parser(int client_fd, const char* buffer) {
+  std::vector<std::string> args; int pos = 0;
+  if(buffer[pos]!='*') return args;
+  pos++; int tokens = 0;
+  while(buffer[pos]!='\r') {
+    tokens = tokens*10 + (buffer[pos]-'0');
+    pos++;
+  }
 
-void handle_command(int client_fd, std::vector<std::string>& command) {
+  pos+=2;
+
+  for(int i=0; i<tokens; i++) {
+    if(buffer[pos]!='$') break;
+    pos++; int str_len = 0;
+    while(buffer[pos]!='\r') {
+      str_len = str_len*10 + (buffer[pos]-'0'); 
+      pos++;
+    }
+    pos+=2;
+
+    std::string arg(buffer+pos, str_len);
+    args.push_back(arg);
+    pos+= str_len+2;
+  }
+
+  return args;
+}
+
+
+void handle_command(int client_fd, std::vector<std::string> command) {
+  std::string response = "$-1\r\n";
   if(command.size()>0) {
     std::string cmd = command[0];
     std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
-    std::string response = "$-1\r\n";
+    
+
+    if(command[0]!="EXEC" && command[0]!="DISCARD") {
+      response = QUEUE(command, client_fd);
+      if(response!="-1") {
+        send(client_fd, response.c_str(), response.size(), 0);
+        return;
+      }
+    }
 
     if(cmd=="PING") {
       response = PING();
-    }
+}
     else if (cmd=="ECHO") {
       if(command.size()>1) {
          response = ECHO(command[1]);
@@ -37,7 +72,6 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
       if(command.size()>1) {
         response = GET(command[1]);       
       }
-
     }
     else if(cmd=="RPUSH") {
       if(command.size()>2) {
@@ -51,9 +85,7 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
     }
     else if(cmd=="LRANGE") { 
       if(command.size()>3) {
-        int64_t start = std::stoll(command[2]);
-        int64_t stop = std::stoll(command[3]);
-        response = LRANGE(command[1], start, stop);
+        response = LRANGE(command);
       }
     }
     else if(cmd=="LLEN") {
@@ -63,21 +95,17 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
     }
     else if(cmd=="LPOP") {
       if(command.size()>1) {
-        int64_t num = 1;
-        if(command.size()>2) num = std::stoll(command[2]);
-        response = LPOP(command[1], num);
+        response = LPOP(command);
       }
     }
     else if(cmd=="BLPOP") {
       if(command.size()>2) {
-        double timeout = std::stod(command[2]);
-        int64_t timeout_ms = static_cast<int64_t>(timeout * 1000);
-        response = BLPOP(command[1], timeout_ms);
+        response = BLPOP(command);
       }
     }
     else if(cmd=="TYPE") {
       if(command.size()>1) {
-        response = TYPE(command[1]);
+  response = TYPE(command[1]);
       }
     }
     else if(cmd=="XADD") {
@@ -87,21 +115,12 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
     }
     else if(cmd=="XRANGE") {
       if(command.size()>3) {
-        response = XRANGE(command[1], command[2], command[3]);
+        response = XRANGE(command);
       }
     }
     else if(cmd=="XREAD") {
       if(command.size()>3) {
-        int64_t timeout = 0;
-        int offset = 2; if(arg_check(command[1], "BLOCK")) { offset = 4; timeout = std::stoll(command[2]); }
-        int num_streams = (command.size() - offset)/2;
-        std::vector<std::pair<std::string, std::string>> key_to_id;
-        for(int i=offset; i<num_streams+offset; i++) {
-          key_to_id.emplace_back(command[i], command[i+num_streams]);
-        }
-       
-        
-        response = XREAD(key_to_id, timeout);
+        response = XREAD(command);
       }
     }
     else if(cmd=="INCR") {
@@ -110,13 +129,16 @@ void handle_command(int client_fd, std::vector<std::string>& command) {
       }
     }
     else if(cmd=="MULTI") {
-      multi.insert(client_fd);
-      response = "+OK\r\n";
+      response = MULTI(client_fd);
+    }
+    else if(cmd=="EXEC") {
+      response = EXEC(client_fd);
     }
 
-    send(client_fd, response.c_str(), response.length(), 0);
-
+  
   }
+
+   send(client_fd, response.c_str(), response.size(), 0); 
 
 }
 
