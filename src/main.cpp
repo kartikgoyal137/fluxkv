@@ -140,6 +140,9 @@ void handle_command(int client_fd, std::vector<std::string> command) {
     else if(cmd=="CONFIG") {
       response = CONFIG(command);
     }
+    else if(cmd=="INFO") {
+      response = INFO(command);
+    }
 
   
   }
@@ -175,12 +178,27 @@ void handle_client(int client_fd) {
 
 int main(int argc, char **argv) {
   
+  
    for(int i=1; i<argc; i++) {
     std::string arg = argv[i];
     if(arg=="--dir" && i+1<argc) dir = argv[++i];
     else if(arg=="--dbfilename" && i+1<argc) dbfilename = argv[++i];
-    else if(arg=="--port" && i+1<argc) port_number = std::stoi(argv[++i]);
+    else if(arg=="--port" && i+1<argc){
+      port_number = std::stoi(argv[++i]); 
+    }
+    else if(arg=="--replicaof") {
+      Server& server = server_info[port_number];
+      server.role = "slave";
+    }
   }
+  Server& server = server_info[port_number];
+  if(server.role=="-1"){
+    server.role = "master";
+    server.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
+    server.master_repl_offset = "0";
+  }
+
+
 
   // Flush after every std::cout / std::cerr
   std::cout << std::unitbuf;

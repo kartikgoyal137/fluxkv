@@ -7,6 +7,7 @@ std::unordered_map<std::string, KeyType> key_type;
 std::unordered_map <std::string, std::string> store;
 std::unordered_map<std::string, std::deque<std::string>> lists;
 std::unordered_map<std::string, Stream> streams;
+std::unordered_map<int, Server> server_info;
 
 std::shared_mutex sm_keytype;
 std::shared_mutex sm_store;
@@ -690,6 +691,22 @@ std::string CONFIG(std::vector<std::string> command) {
     else if(arg=="dbfilename") { array.push_back(dbfilename);  response = arr_to_resp(array) ; }
   }
   
+
+  return response;
+}
+
+std::string INFO(std::vector<std::string> command) {
+  std::string arg = command[1];
+  std::string response;
+
+  if(arg=="replication") {
+   Server& server = server_info[port_number];
+    response += "role:"+server.role+"\r\n"; 
+    response += "master_repl_offset:"+server.master_repl_offset+"\r\n";
+    response += "master_replid:"+server.master_replid;
+
+    response = bulk_string(response);
+  }
 
   return response;
 }

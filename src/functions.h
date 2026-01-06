@@ -27,6 +27,12 @@ struct Stream {
     std::map<std::string, StreamEntry> entries;
 };
 
+struct Server {
+ std::string role = "-1";
+ std::string master_replid = "-1";
+ std::string master_repl_offset = "-1";
+};
+
 extern std::string dir;
 extern std::string dbfilename;
 extern int port_number;
@@ -36,6 +42,7 @@ extern std::unordered_map<std::string, KeyType> key_type;
 extern std::unordered_map <std::string, std::string> store;
 extern std::unordered_map<std::string, std::deque<std::string>> lists;
 extern std::unordered_map<std::string, Stream> streams;
+extern std::unordered_map<int, Server> server_info;
 
 extern std::shared_mutex sm_keytype;
 extern std::shared_mutex sm_store;
@@ -68,6 +75,7 @@ std::string EXEC(int fd);
 std::string QUEUE(std::vector<std::string> command, int fd);
 std::string DISCARD(int fd);
 std::string CONFIG(std::vector<std::string> command);
+std::string INFO(std::vector<std::string>);
 
 #endif
 
