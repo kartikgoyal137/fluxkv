@@ -178,7 +178,9 @@ void handle_client(int client_fd) {
 
 int main(int argc, char **argv) {
   
-  
+   int master_port = -1;
+   std::string master_host="-1";
+
    for(int i=1; i<argc; i++) {
     std::string arg = argv[i];
     if(arg=="--dir" && i+1<argc) dir = argv[++i];
@@ -189,14 +191,60 @@ int main(int argc, char **argv) {
     else if(arg=="--replicaof") {
       Server& server = server_info[port_number];
       server.role = "slave";
+      std::string master = argv[++i];
+      int index = master.find(" ");
+      
+      master_host = master.substr(0, index);
+      if(master_host=="localhost") master_host = "127.0.0.1";
+      master_port = std::stoi(master.substr(index+1));
     }
   }
+
   Server& server = server_info[port_number];
   if(server.role=="-1"){
     server.role = "master";
     server.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
     server.master_repl_offset = "0";
   }
+  else if(server.role=="slave") {
+    int master_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (master_fd < 0) {
+     std::cerr << "Failed to create master socket\n";
+     return 1;
+    }
+    
+    struct sockaddr_in master_addr;
+    master_addr.sin_family = AF_INET;
+    master_addr.sin_port = htons(master_port);
+
+    inet_pton(AF_INET, master_host.c_str(), &master_addr.sin_addr);
+
+    if(connect(master_fd, (const sockaddr*) &master_addr, sizeof(master_addr)) < 0) {
+     std::cerr << "failed to connect to master\n";
+     return 1;
+    }
+
+    const char* ping = "*1\r\n$4\r\nPING\r\n";
+
+    send(master_fd, ping, strlen(ping), 0);
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
