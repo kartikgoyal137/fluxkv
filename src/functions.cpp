@@ -112,10 +112,17 @@ std::string call_function(std::vector<std::string> command, int client_fd) {
     else if(cmd=="CONFIG") {
       response = CONFIG(command);
     }
+    else if(cmd=="REPLCONF") {
+      response = REPLCONF();
+  }
 
 
   return response;
 
+}
+
+std::string REPLCONF() {
+  return "+OK\r\n";
 }
 
 std::string QUEUE(std::vector<std::string> command, int fd) {

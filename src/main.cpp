@@ -143,6 +143,9 @@ void handle_command(int client_fd, std::vector<std::string> command) {
     else if(cmd=="INFO") {
       response = INFO(command);
     }
+    else if(cmd=="REPLCONF") {
+      response= REPLCONF();
+    }
 
   
   }
@@ -225,8 +228,19 @@ int main(int argc, char **argv) {
     }
 
     const char* ping = "*1\r\n$4\r\nPING\r\n";
-
+    const char* replconf2 = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
+    const char* replconf1 = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n6380\r\n";
+    char buffer[1024];
     send(master_fd, ping, strlen(ping), 0);
+    size_t bytes = recv(master_fd, buffer, sizeof(buffer)-1, 0);
+    if(bytes==-1) {
+      std::cerr << "PING to master failed";
+      return 1;
+    }
+
+    send(master_fd, replconf1, strlen(replconf1), 0);
+    send(master_fd, replconf2, strlen(replconf2), 0);
+
 
   }
 
