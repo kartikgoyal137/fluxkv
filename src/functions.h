@@ -63,6 +63,7 @@ std::string MULTI(int fd);
 std::string call_function(std::vector<std::string> command, int client_fd);
 std::string EXEC(int fd);
 std::string QUEUE(std::vector<std::string> command, int fd);
+std::string DISCARD(int fd);
 
 #endif
 
