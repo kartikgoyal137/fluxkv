@@ -30,7 +30,7 @@ struct Stream {
 struct Server {
  std::string role = "-1";
  std::string master_replid = "-1";
- std::string master_repl_offset = "-1";
+ int master_repl_offset = -1;
 };
 
 extern std::set<int> slave_fd;

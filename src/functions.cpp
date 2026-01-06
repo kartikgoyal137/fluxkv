@@ -134,7 +134,8 @@ std::string ARR_TO_RESP(std::vector<std::string> array) {
 std::string REPLCONF(std::vector<std::string>& command) {
   if(command.size()>2 && command[1]=="GETACK") {
     std::vector<std::string> array = {"REPLCONF", "ACK"};
-    std::string os = std::to_string(0);
+    Server& server = server_info[port_number];
+    std::string os = std::to_string(server.master_repl_offset);
     array.push_back(os);
     return arr_to_resp(array);
   }
@@ -731,7 +732,7 @@ std::string INFO(std::vector<std::string> command) {
   if(arg=="replication") {
    Server& server = server_info[port_number];
     response += "role:"+server.role+"\r\n"; 
-    response += "master_repl_offset:"+server.master_repl_offset+"\r\n";
+    response += "master_repl_offset:"+std::to_string(server.master_repl_offset)+"\r\n";
     response += "master_replid:"+server.master_replid;
 
     response = bulk_string(response);

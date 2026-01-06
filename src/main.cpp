@@ -191,6 +191,9 @@ void handle_command(int client_fd, std::vector<std::string> command) {
   }
 
    propagate(command);
+   std::string str_cmd = ARR_TO_RESP(command);
+   Server& server = server_info[port_number];
+   server.master_repl_offset += str_cmd.size();
    if(client_fd==master_fd && !replicaSend) return;
    send(client_fd, response.c_str(), response.size(), 0); 
 
@@ -223,7 +226,7 @@ void connect_to_master(int master_port, std::string master_host) {
   if(server.role=="-1"){
     server.role = "master";
     server.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
-    server.master_repl_offset = "0";
+    server.master_repl_offset = 0;
   }
   else if(server.role=="slave") {
     master_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -322,6 +325,7 @@ int main(int argc, char **argv) {
     else if(arg=="--replicaof") {
       Server& server = server_info[port_number];
       server.role = "slave";
+      server.master_repl_offset = 0;
       std::string master = argv[++i];
       int index = master.find(" ");
       
