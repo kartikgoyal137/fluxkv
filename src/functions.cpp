@@ -1,7 +1,8 @@
 #include "utils.h"
 #include "functions.h"
 
-std::set<int> pending_fd; 
+std::set<int> pending_fd;
+std::set<int> slave_fd;
 std::map<int, std::vector<std::vector<std::string>>> pending_cmd;
 std::unordered_map<std::string, KeyType> key_type;
 std::unordered_map <std::string, std::string> store;
@@ -116,7 +117,7 @@ std::string call_function(std::vector<std::string> command, int client_fd) {
       response = REPLCONF();
     }
     else if(cmd=="PSYNC") {
-      response = PSYNC();
+      response = PSYNC(client_fd);
   }
 
 
@@ -125,11 +126,17 @@ std::string call_function(std::vector<std::string> command, int client_fd) {
 
 }
 
+std::string ARR_TO_RESP(std::vector<std::string> array) {
+  std::string response = arr_to_resp(array);
+  return response;
+}
+
 std::string REPLCONF() {
   return "+OK\r\n";
 }
 
-std::string PSYNC() {
+std::string PSYNC(int fd) {
+  slave_fd.insert(fd);
   Server& server = server_info[port_number];
   return "+FULLRESYNC "+server.master_replid+" 0\r\n";
 }

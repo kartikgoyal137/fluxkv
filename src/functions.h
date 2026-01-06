@@ -33,6 +33,7 @@ struct Server {
  std::string master_repl_offset = "-1";
 };
 
+extern std::set<int> slave_fd;
 extern std::string dir;
 extern std::string dbfilename;
 extern int port_number;
@@ -77,7 +78,8 @@ std::string DISCARD(int fd);
 std::string CONFIG(std::vector<std::string> command);
 std::string INFO(std::vector<std::string>);
 std::string REPLCONF();
-std::string PSYNC();
+std::string PSYNC(int);
+std::string ARR_TO_RESP(std::vector<std::string>);
 
 #endif
 

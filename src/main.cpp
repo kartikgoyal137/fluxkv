@@ -10,6 +10,9 @@
 #include <thread>
 #include <vector>
 #include "functions.h"
+#include <set>
+
+int master_fd;
 
 std::vector<std::string> resp_parser(int client_fd, const char* buffer) {
   std::vector<std::string> args; int pos = 0;
@@ -37,6 +40,19 @@ std::vector<std::string> resp_parser(int client_fd, const char* buffer) {
   }
 
   return args;
+}
+
+std::set<std::string> allowed = {"SET", "RPUSH", "LPUSH", "XADD", "LPOP", "BLPOP", "INCR"};
+void propagate(std::vector<std::string>& command) {
+  std::string arg = command[0];
+  std::transform(arg.begin(), arg.end(), arg.begin(), ::toupper);
+  
+  if(allowed.find(arg)==allowed.end()) return;
+
+  std::string cmd = ARR_TO_RESP(command);
+  for(auto& fd : slave_fd) {
+    send(fd, cmd.c_str(), cmd.size(), 0);
+  }
 }
 
 
@@ -147,7 +163,7 @@ void handle_command(int client_fd, std::vector<std::string> command) {
       response= REPLCONF();
     }
     else if(cmd=="PSYNC") {
-      response = PSYNC();
+      response = PSYNC(client_fd);
       send(client_fd, response.c_str(), response.size(), 0);
       const unsigned char emptyRDB[] = {
             0x52, 0x45, 0x44, 0x49, 0x53, 0x30, 0x30, 0x31, 0x31, 0xfa, 0x09, 0x72, 0x65, 0x64, 0x69, 0x73,
@@ -165,6 +181,8 @@ void handle_command(int client_fd, std::vector<std::string> command) {
   
   }
 
+   propagate(command);
+   if(client_fd==master_fd) return;
    send(client_fd, response.c_str(), response.size(), 0); 
 
 }
@@ -225,7 +243,7 @@ int main(int argc, char **argv) {
     server.master_repl_offset = "0";
   }
   else if(server.role=="slave") {
-    int master_fd = socket(AF_INET, SOCK_STREAM, 0);
+    master_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (master_fd < 0) {
      std::cerr << "Failed to create master socket\n";
      return 1;
@@ -244,7 +262,7 @@ int main(int argc, char **argv) {
 
     const char* ping = "*1\r\n$4\r\nPING\r\n";
     const char* replconf2 = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
-    const char* replconf1 = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n6380\r\n";
+    std::string replconf1 = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$"+std::to_string(std::to_string(port_number).size())+"\r\n"+std::to_string(port_number)+"\r\n";
     const char* psync = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
     char buffer[1024];
     send(master_fd, ping, strlen(ping), 0);
@@ -254,7 +272,8 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    send(master_fd, replconf1, strlen(replconf1), 0);
+
+    send(master_fd, replconf1.c_str(), replconf1.size(), 0);
      bytes = recv(master_fd, buffer, sizeof(buffer)-1, 0);
     send(master_fd, replconf2, strlen(replconf2), 0);
      bytes = recv(master_fd, buffer, sizeof(buffer)-1, 0);
