@@ -114,7 +114,11 @@ std::string call_function(std::vector<std::string> command, int client_fd) {
     }
     else if(cmd=="REPLCONF") {
       response = REPLCONF();
+    }
+    else if(cmd=="PSYNC") {
+      response = PSYNC();
   }
+
 
 
   return response;
@@ -123,6 +127,11 @@ std::string call_function(std::vector<std::string> command, int client_fd) {
 
 std::string REPLCONF() {
   return "+OK\r\n";
+}
+
+std::string PSYNC() {
+  Server& server = server_info[port_number];
+  return "+FULLRESYNC"+server.master_replid+"0\r\n";
 }
 
 std::string QUEUE(std::vector<std::string> command, int fd) {

@@ -77,6 +77,7 @@ std::string DISCARD(int fd);
 std::string CONFIG(std::vector<std::string> command);
 std::string INFO(std::vector<std::string>);
 std::string REPLCONF();
+std::string PSYNC();
 
 #endif
 
